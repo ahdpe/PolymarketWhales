@@ -87,13 +87,16 @@ async def handle_trade(trade_data):
                 # Build trader link
                 trader_text = f"[{trader}]({trader_url})" if trader_url else trader
                 
-                # Potential payout (size = tokens, each worth $1 if win)
-                payout = size
+                # Money display: BUY shows spent → payout, SELL shows just received amount
+                if side == 'BUY':
+                    money_text = f"*${value_usd:,.0f}* → ${size:,.0f}"
+                else:
+                    money_text = f"*${value_usd:,.0f}*"
                     
                 msg = (
                     f"{cat_emoji} [{market_title[:80]}]({market_url})\n"
                     f"{side_emoji} *{side} {outcome}* @ {price_pct:.1f}%\n"
-                    f"💵 *${value_usd:,.0f}* → ${payout:,.0f}\n"
+                    f"💵 {money_text}\n"
                     f"{level_emoji} {trader_text}"
                 )
                 await send_trade_alert(chat_id, msg)
@@ -117,12 +120,17 @@ async def handle_trade(trade_data):
                         level_emoji = get_trade_level_emoji(lang, alert_config['min'])
                         
                         trader_text = f"[{trader}]({trader_url})" if trader_url else trader
-                        payout = size
+                        
+                        # Money display: BUY shows spent → payout, SELL shows just received amount
+                        if side == 'BUY':
+                            money_text = f"*${value_usd:,.0f}* → ${size:,.0f}"
+                        else:
+                            money_text = f"*${value_usd:,.0f}*"
                         
                         msg = (
                             f"{cat_emoji} [{market_title[:80]}]({market_url})\n"
                             f"{side_emoji} *{side} {outcome}* @ {price_pct:.1f}%\n"
-                            f"💵 *${value_usd:,.0f}* → ${payout:,.0f}\n"
+                            f"💵 {money_text}\n"
                             f"{level_emoji} {trader_text}"
                         )
                         await send_trade_alert(DEFAULT_CHAT_ID, msg)
