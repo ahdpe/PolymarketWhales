@@ -25,7 +25,9 @@ async def handle_trade(trade_data):
     try:
         price = float(trade_data.get('price', 0))
         size = float(trade_data.get('size', 0))
-        value_usd = price * size
+        # size = potential payout (shares), this is what Polymarket UI shows as trade amount
+        # price * size = actual cost paid by trader
+        value_usd = size  # Use potential payout to match Polymarket's displayed values
         
         # Get alert level for this trade size
         alert_config = get_alert_level(value_usd)
