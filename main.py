@@ -41,7 +41,7 @@ async def handle_trade(trade_data):
         emoji = alert_config['emoji']
         side = trade_data.get('side', 'UNKNOWN')
         outcome = trade_data.get('outcome', '')
-        trader = trade_data.get('pseudonym') or trade_data.get('name', 'Unknown')
+        trader = trade_data.get('name') or trade_data.get('pseudonym', 'Unknown')
         trader_address = trade_data.get('proxyWallet', '') or trade_data.get('maker', '')
         event_slug = trade_data.get('eventSlug', '')
         
