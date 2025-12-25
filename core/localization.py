@@ -3,7 +3,7 @@
 TRANSLATIONS = {
     'ru': {
         # Start message
-        'welcome': "Привет! Я бот PolyWhales. 🐋\nТвой ID чата: `{chat_id}`\n\nИспользуй кнопки внизу для настройки.",
+        'welcome': "🐋 *Polymarket Whales*\n\nОтслеживаю крупные сделки на Polymarket в реальном времени.\n\n*Возможности:*\n• Уведомления о сделках от $500 до $100,000+\n• Фильтрация по сумме и категориям\n• Ссылки на профиль трейдера\n\nИспользуй кнопки для настройки.",
         
         # Buttons
         'btn_filter': "💰 Фильтр",
@@ -75,7 +75,7 @@ TRANSLATIONS = {
     
     'en': {
         # Start message
-        'welcome': "Hello! I'm PolyWhales bot. 🐋\nYour chat ID: `{chat_id}`\n\nUse the buttons below to configure.",
+        'welcome': "🐋 *Polymarket Whales*\n\nReal-time monitoring of large trades on Polymarket.\n\n*Features:*\n• Trade alerts from $500 to $100,000+\n• Amount and category filters\n• Trader profile links\n\nUse buttons below to configure.",
         
         # Buttons
         'btn_filter': "⚙️ Filter & Settings",

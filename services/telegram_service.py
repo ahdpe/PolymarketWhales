@@ -88,7 +88,7 @@ def get_unified_keyboard(chat_id):
     """Create unified inline keyboard (amounts + categories)."""
     lang = get_user_lang(chat_id)
     prefs = user_categories.get(chat_id, get_default_categories())
-    current_min = user_filters.get(chat_id, FILTERS[-1]['min'])
+    current_min = user_filters.get(chat_id, 50000)  # Default $50k
     
     buttons = []
     
@@ -149,7 +149,7 @@ async def cmd_start(message: types.Message):
     chat_id = message.chat.id
     # Set defaults
     if chat_id not in user_filters:
-        user_filters[chat_id] = FILTERS[-1]['min']  # Default to $100
+        user_filters[chat_id] = 50000  # Default to $50k
     if chat_id not in user_categories:
         user_categories[chat_id] = get_default_categories()
     if chat_id not in user_languages:
@@ -279,7 +279,7 @@ async def callback_category(callback: CallbackQuery):
         enabled_text = ", ".join(labels.get(k, k) for k in enabled) if enabled else get_text(lang, 'cat_nothing')
         
         # Get active filter text
-        min_val = user_filters.get(chat_id, FILTERS[-1]['min'])
+        min_val = user_filters.get(chat_id, 50000)
         
         await callback.answer(get_text(lang, 'filter_toast'))
         await callback.message.edit_text(
