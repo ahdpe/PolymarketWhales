@@ -33,10 +33,11 @@ async def handle_trade(trade_data):
         if not alert_config:
             return  # Trade too small for any alert
         
-        # Detect category
+        # Detect category - use both slug and eventSlug for better detection
         market_title = trade_data.get('title', 'Unknown Market')
+        slug = trade_data.get('slug', '')
         event_slug = trade_data.get('eventSlug', '')
-        category = detect_category(market_title, event_slug)
+        category = detect_category(market_title, f"{slug} {event_slug}")
             
         emoji = alert_config['emoji']
         side = trade_data.get('side', 'UNKNOWN')

@@ -19,6 +19,8 @@ SPORTS_KEYWORDS = [
     'tennis', 'golf', 'boxing', 'ufc', 'mma', 'f1', 'formula 1',
     'olympics', 'match', 'game', 'score', 'vs ', ' vs',
     'sports',  # Generic
+    # Regional football competitions
+    'acn', 'afcon', 'afc', 'concacaf', 'copa america', 'euro 2024', 'euro 2028',
     
     # NBA Teams
     'lakers', 'celtics', 'warriors', 'knicks', 'bulls', 'nets',
