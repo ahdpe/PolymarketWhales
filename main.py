@@ -8,7 +8,7 @@ from services.telegram_service import (
 )
 from core.filters import get_alert_level
 from core.categories import detect_category, should_show_trade
-from core.localization import get_text, get_trade_level_name
+from core.localization import get_text, get_trade_level_name, get_trade_level_emoji
 from config import FILTERS
 
 # Configure logging
@@ -81,6 +81,9 @@ async def handle_trade(trade_data):
                 lang = get_user_lang(chat_id)
                 level_name = get_trade_level_name(lang, alert_config['min'])
                 
+                # Get localized emoji
+                level_emoji = get_trade_level_emoji(lang, alert_config['min'])
+                
                 # Build trader link
                 trader_text = f"[{trader}]({trader_url})" if trader_url else trader
                     
@@ -88,7 +91,7 @@ async def handle_trade(trade_data):
                     f"{cat_emoji} [{market_title[:80]}]({market_url})\n"
                     f"{side_emoji} *{side} {outcome}* @ {price_pct:.1f}%\n"
                     f"💵 *${value_usd:,.0f}*\n"
-                    f"{emoji} {trader_text}"
+                    f"{level_emoji} {trader_text}"
                 )
                 await send_trade_alert(chat_id, msg)
         
@@ -108,6 +111,7 @@ async def handle_trade(trade_data):
                     if should_show_trade(category, user_prefs):
                         lang = get_user_lang(default_id)
                         level_name = get_trade_level_name(lang, alert_config['min'])
+                        level_emoji = get_trade_level_emoji(lang, alert_config['min'])
                         
                         trader_text = f"[{trader}]({trader_url})" if trader_url else trader
                         
@@ -115,7 +119,7 @@ async def handle_trade(trade_data):
                             f"{cat_emoji} [{market_title[:80]}]({market_url})\n"
                             f"{side_emoji} *{side} {outcome}* @ {price_pct:.1f}%\n"
                             f"💵 *${value_usd:,.0f}*\n"
-                            f"{emoji} {trader_text}"
+                            f"{level_emoji} {trader_text}"
                         )
                         await send_trade_alert(DEFAULT_CHAT_ID, msg)
             except ValueError:

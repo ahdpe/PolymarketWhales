@@ -161,6 +161,28 @@ TRADE_LEVELS = {
     }
 }
 
+# Trade level emojis with localized text
+TRADE_LEVEL_EMOJIS = {
+    'ru': {
+        100000: "🔥 МЕГА КИТ",
+        50000: "⚡ СУПЕР КИТ", 
+        25000: "🐋 КИТ",
+        10000: "🦈 АКУЛА",
+        5000: "🐬 ДЕЛЬФИН",
+        2000: "🐟 РЫБА",
+        500: "🦐 КРЕВЕТКА",
+    },
+    'en': {
+        100000: "🔥 MEGA WHALE",
+        50000: "⚡ SUPER WHALE",
+        25000: "🐋 WHALE",
+        10000: "🦈 SHARK",
+        5000: "🐬 DOLPHIN",
+        2000: "🐟 FISH",
+        500: "🦐 SHRIMP",
+    }
+}
+
 
 def get_text(lang: str, key: str, **kwargs) -> str:
     """Get localized text."""
@@ -176,3 +198,9 @@ def get_text(lang: str, key: str, **kwargs) -> str:
 def get_trade_level_name(lang: str, min_value: int) -> str:
     """Get localized trade level name."""
     return TRADE_LEVELS.get(lang, TRADE_LEVELS['ru']).get(min_value, "")
+
+
+def get_trade_level_emoji(lang: str, min_value: int) -> str:
+    """Get localized trade level emoji with text (e.g. '🐬 DOLPHIN')."""
+    levels = TRADE_LEVEL_EMOJIS.get(lang, TRADE_LEVEL_EMOJIS['ru'])
+    return levels.get(min_value, levels.get(500, "🦐"))
