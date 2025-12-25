@@ -151,8 +151,8 @@ async def main():
     logger.info("Starting PolyWhales...")
     logger.info("Using Polymarket Data API for whale trades...")
     
-    # Run Polymarket trade polling (5s interval)
-    await poly_service.poll_trades(handle_trade, interval=5)
+    # Run Polymarket trade polling (uses POLL_INTERVAL from polymarket.py)
+    await poly_service.poll_trades(handle_trade)
     
     await tg_task
 
