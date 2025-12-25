@@ -25,9 +25,7 @@ async def handle_trade(trade_data):
     try:
         price = float(trade_data.get('price', 0))
         size = float(trade_data.get('size', 0))
-        # size = potential payout (shares), this is what Polymarket UI shows as trade amount
-        # price * size = actual cost paid by trader
-        value_usd = size  # Use potential payout to match Polymarket's displayed values
+        value_usd = price * size
         
         # Get alert level for this trade size
         alert_config = get_alert_level(value_usd)
@@ -88,11 +86,14 @@ async def handle_trade(trade_data):
                 
                 # Build trader link
                 trader_text = f"[{trader}]({trader_url})" if trader_url else trader
+                
+                # Potential payout (size = tokens, each worth $1 if win)
+                payout = size
                     
                 msg = (
                     f"{cat_emoji} [{market_title[:80]}]({market_url})\n"
                     f"{side_emoji} *{side} {outcome}* @ {price_pct:.1f}%\n"
-                    f"💵 *${value_usd:,.0f}*\n"
+                    f"💵 *${value_usd:,.0f}* → ${payout:,.0f}\n"
                     f"{level_emoji} {trader_text}"
                 )
                 await send_trade_alert(chat_id, msg)
@@ -116,11 +117,12 @@ async def handle_trade(trade_data):
                         level_emoji = get_trade_level_emoji(lang, alert_config['min'])
                         
                         trader_text = f"[{trader}]({trader_url})" if trader_url else trader
+                        payout = size
                         
                         msg = (
                             f"{cat_emoji} [{market_title[:80]}]({market_url})\n"
                             f"{side_emoji} *{side} {outcome}* @ {price_pct:.1f}%\n"
-                            f"💵 *${value_usd:,.0f}*\n"
+                            f"💵 *${value_usd:,.0f}* → ${payout:,.0f}\n"
                             f"{level_emoji} {trader_text}"
                         )
                         await send_trade_alert(DEFAULT_CHAT_ID, msg)
