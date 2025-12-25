@@ -51,7 +51,7 @@ SPORTS_KEYWORDS = [
     'lebron', 'curry', 'durant', 'mahomes', 'brady', 'messi', 'ronaldo',
     'mvp', 'championship', 'finals', 'touchdown', 'goal', 'home run', 
     'slam dunk', 'knockout', 'winner', 'points', 'assists', 'rebounds',
-    ' win ', ' beat ', ' defeat ', 'victory', 'loses', 'advance',
+    ' beat ', ' defeat ', 'victory', 'loses', 'advance',
 ]
 
 
