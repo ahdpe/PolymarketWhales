@@ -197,8 +197,3 @@ python main.py
 ## License
 
 MIT
-
-## Contact
-
-- Telegram: [@Andrey_Os](https://t.me/Andrey_Os)
-- GitHub: [ahdpe/PolymarketWhales](https://github.com/ahdpe/PolymarketWhales)
