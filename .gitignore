@@ -4,3 +4,6 @@ __pycache__/
 .env
 user_settings.json
 *.png
+data/trades.db
+data/trades.db-shm
+data/trades.db-wal
