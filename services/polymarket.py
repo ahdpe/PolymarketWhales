@@ -122,19 +122,127 @@ class TradePersistence:
         self.conn.close()
 
 
+
+class TradeAggregator:
+    def __init__(self, window_sec=60, min_alert_usd=500):
+        self.window_sec = window_sec
+        self.min_alert_usd = min_alert_usd
+        self.series = {}  # key -> SeriesData
+        self.last_cleanup = time.time()
+
+    def _get_key(self, trade):
+        return (
+            trade.get('proxyWallet', ''),
+            trade.get('conditionId', ''),
+            trade.get('side', ''),
+            trade.get('outcomeIndex', str(trade.get('outcome', '')))
+        )
+
+    def process_trade(self, trade):
+        """
+        Process a new trade.
+        Returns: aggregated_trade dict if a series triggers an alert, else None.
+        """
+        key = self._get_key(trade)
+        now_ts = trade.get('timestamp', time.time())
+        try:
+             # Ensure timestamp is int/float
+            now_ts = float(now_ts)
+        except:
+            now_ts = time.time()
+
+        price = float(trade.get('price', 0))
+        size = float(trade.get('size', 0))
+        usd_val = price * size
+
+        # Check if series exists and is within window
+        if key in self.series:
+            s = self.series[key]
+            # Window check: 60s from first trade
+            if now_ts - s['first_ts'] > self.window_sec:
+                # Series expired, close old one and start new
+                del self.series[key]
+                s = None
+        else:
+            s = None
+
+        if s is None:
+            # Start new series
+            s = {
+                'first_ts': now_ts,
+                'last_ts': now_ts,
+                'usd_sum': 0.0,
+                'size_sum': 0.0,
+                'volume_weighted_price_sum': 0.0, # price * size sum for VWAP
+                'fills': 0,
+                'alert_sent': False,
+                'base_trade': trade # Keep reference for metadata (title, slug, etc)
+            }
+            self.series[key] = s
+
+        # Update series
+        s['last_ts'] = max(s['last_ts'], now_ts)
+        s['usd_sum'] += usd_val
+        s['size_sum'] += size
+        s['volume_weighted_price_sum'] += (price * size)
+        s['fills'] += 1
+
+        # Check Trigger
+        if s['usd_sum'] >= self.min_alert_usd and not s['alert_sent']:
+            s['alert_sent'] = True
+            
+            # Construct Aggregate Trade Object
+            avg_price = s['volume_weighted_price_sum'] / s['size_sum'] if s['size_sum'] > 0 else 0
+            
+            agg_trade = s['base_trade'].copy()
+            agg_trade.update({
+                'is_aggregate': True,
+                'series_fills': s['fills'],
+                'series_usd_sum': s['usd_sum'],
+                'series_avg_price': avg_price,
+                'series_window_sec': self.window_sec,
+                # Override size/price with totals for accurate display logic
+                'size': s['size_sum'], 
+                'price': avg_price,
+                'value_usd': s['usd_sum'] # Pre-calculate for main.py
+            })
+            return agg_trade
+        
+        return None
+
+    def cleanup(self):
+        """Garbage collect old series."""
+        if time.time() - self.last_cleanup < 10:
+            return
+            
+        now = time.time()
+        keys_to_del = []
+        for k, s in self.series.items():
+            # If nothing happened for window_sec + buffer, delete
+            if now - s['last_ts'] > self.window_sec + 10:
+                keys_to_del.append(k)
+        
+        for k in keys_to_del:
+            del self.series[k]
+            
+        self.last_cleanup = now
+
+
 class PolymarketService:
     def __init__(self):
         self.persistence = TradePersistence()
+        self.aggregator = TradeAggregator(window_sec=60, min_alert_usd=500)
         self.last_timestamp = 0
         self.consecutive_errors = 0
         self.total_trades_processed = 0
         
-        logger.info("PolymarketService initialized - using Data API with SQLite Persistence")
+        logger.info("PolymarketService initialized - using Data API with SQLite Persistence & Aggregation")
         
-    async def _fetch_recent_trades(self, limit=10000, offset=0, min_size=500):
+    async def _fetch_recent_trades(self, limit=10000, offset=0, min_size=10):
         """Fetch recent trades from Data API."""
         try:
             # Optimized API request with server-side filtering
+            # Lowered min_size to 10 to capture shards for aggregation
             url = f"{DATA_API_URL}/trades?limit={limit}&offset={offset}&takerOnly=true&filterType=CASH&filterAmount={min_size}"
             
             async with aiohttp.ClientSession() as session:
@@ -162,7 +270,7 @@ class PolymarketService:
     async def poll_trades(self, callback, interval=POLL_INTERVAL):
         """
         Poll for new trades every `interval` seconds.
-        Uses pagination and SQLite persistence.
+        Uses pagination, SQLite persistence, and Aggregation.
         """
         logger.info(f"Starting trade polling (every {interval}s)...")
         limit = 10000 
@@ -192,14 +300,22 @@ class PolymarketService:
                         if self.persistence.is_seen(key):
                             continue
                         
-                        # New trade
-                        self.persistence._add_to_lru(key) # Speculative add to avoid dupes in same batch if any
+                        # New trade confirmed
+                        self.persistence._add_to_lru(key)
                         new_keys_batch.append(key)
-                        
-                        await callback(trade)
-                        
                         trades_found_in_poll += 1
                         self.total_trades_processed += 1
+                        
+                        # Pass to Aggregator
+                        agg_trade = self.aggregator.process_trade(trade)
+                        if agg_trade:
+                            # If aggregator triggered a series alert, send IT
+                            await callback(agg_trade)
+                            
+                        # If you wanted to support single non-aggregated alerts for random big trades, 
+                        # you could add logic here. But per request, we focus on Aggregate >= 500.
+                        # Note: _fetch_recent_trades filters < 10. Aggregator filters sum < 500.
+                        # So a single trade of $1000 will be aggregated immediately (fills=1) and sent.
 
                     # Update global last timestamp
                     if newest_trade_ts > self.last_timestamp:
@@ -215,9 +331,12 @@ class PolymarketService:
                 # Batch insert new keys to DB
                 if new_keys_batch:
                     self.persistence.add_batch(new_keys_batch)
-                    logger.info(f"Processed {len(new_keys_batch)} new trades (total: {self.total_trades_processed})")
+                    logger.info(f"Processed {len(new_keys_batch)} new raw trades. Aggregator active.")
                 
-                # Cleanup DB
+                # Aggregator Cleanup
+                self.aggregator.cleanup()
+
+                # Persistence Cleanup
                 self.persistence.cleanup()
                 
                 # Health Check
@@ -234,6 +353,7 @@ class PolymarketService:
         return {
             "total_processed": self.total_trades_processed,
             "lru_size": len(self.persistence.lru),
+            "active_series": len(self.aggregator.series),
             "last_timestamp": self.last_timestamp,
             "consecutive_errors": self.consecutive_errors
         }

@@ -93,10 +93,18 @@ async def handle_trade(trade_data):
                     money_text = f"*${value_usd:,.0f}* → ${size:,.0f}"
                 else:
                     money_text = f"*${value_usd:,.0f}*"
+                
+                # Format header based on whether it's a multi-fill series or single trade
+                is_series = trade_data.get('is_aggregate', False) and trade_data.get('series_fills', 1) > 1
+                if is_series:
+                    fills = trade_data.get('series_fills', 0)
+                    side_display = f"⚡ *Series {side} {outcome}* ({fills} fills)"
+                else:
+                    side_display = f"{side_emoji} *{side} {outcome}*"
                     
                 msg = (
                     f"{cat_emoji} [{market_title[:80]}]({market_url})\n"
-                    f"{side_emoji} *{side} {outcome}* @ {price_pct:.1f}%\n"
+                    f"{side_display} @ {price_pct:.1f}%\n"
                     f"💵 {money_text}\n"
                     f"{level_emoji} {trader_text}"
                 )
@@ -128,9 +136,17 @@ async def handle_trade(trade_data):
                         else:
                             money_text = f"*${value_usd:,.0f}*"
                         
+                        # Format header based on whether it's a multi-fill series or single trade
+                        is_series = trade_data.get('is_aggregate', False) and trade_data.get('series_fills', 1) > 1
+                        if is_series:
+                            fills = trade_data.get('series_fills', 0)
+                            side_display = f"⚡ *Series {side} {outcome}* ({fills} fills)"
+                        else:
+                            side_display = f"{side_emoji} *{side} {outcome}*"
+                        
                         msg = (
                             f"{cat_emoji} [{market_title[:80]}]({market_url})\n"
-                            f"{side_emoji} *{side} {outcome}* @ {price_pct:.1f}%\n"
+                            f"{side_display} @ {price_pct:.1f}%\n"
                             f"💵 {money_text}\n"
                             f"{level_emoji} {trader_text}"
                         )
