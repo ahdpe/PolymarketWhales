@@ -29,12 +29,51 @@ Telegram-бот для отслеживания крупных сделок ("к
 | 🐟 | Рыба | >$2,000 |
 | 🦐 | Креветка | >$500 |
 
-### Как это работает
+### Принцип работы
 
-1. **Получение данных:** Опрос Polymarket Data API каждые 3 сек
-2. **Агрегация:** Мелкие части крупных ордеров собираются в серии (60 сек окно)
-3. **Дедупликация:** SQLite + LRU кэш предотвращают дубли при перезапуске
-4. **Уведомления:** Персонализированные алерты в Telegram
+#### 1. Получение данных (PolymarketService)
+- **Источник:** Бот использует публичный **Polymarket Data API** (`data-api.polymarket.com`).
+- **Метод:** Бот **опрашивает (polling)** API каждые **3 секунды**.
+- **Фильтрация на входе:** Запрашиваются только сделки типа `CASH` на сумму от **$10** (чтобы захватить даже мелкие части крупных ордеров).
+
+#### 2. Обработка и Агрегация (Aggregation)
+Одна крупная сделка на Polymarket часто разбивается на множество мелких исполнений (fills). Чтобы не спамить уведомлениями о каждой части, бот собирает их в серии.
+- **Группировка:** Сделки объединяются в серию, если совпадают:
+  - Кошелек трейдера
+  - Рынок (Condition ID)
+  - Сторона (BUY/SELL)
+  - Исход (YES/NO/Outcome Index)
+- **Окно времени:** Сделки собираются в течение **60 секунд** с момента первой части.
+- **Порог срабатывания:** Если сумма серии превышает **$500**, она считается значимой и передается на отправку.
+
+#### 3. Дедупликация и Хранение (Persistence)
+Чтобы избежать повторных уведомлений (например, при перезапуске):
+- **База данных:** Используется локальная база **SQLite** (`data/trades.db`), где хранятся уникальные ключи всех обработанных сделок.
+- **Кэш:** В оперативной памяти держится список последних 10,000 сделок (LRU Cache) для мгновенной проверки.
+- **Очистка:** Старые записи (старше 72 часов) автоматически удаляются из базы.
+
+#### 4. Telegram Бот (TelegramService)
+Бот взаимодействует с пользователями и рассылает уведомления.
+- **Персонализация:** Каждый пользователь может настроить свои фильтры:
+  - **Минимальная сумма:** от $500 до $100,000
+  - **Категории:** Крипто, Спорт, Остальное (определяются по ключевым словам)
+  - **Вероятность:** Любая, 1%-99%, 5%-95%, 10%-90%
+  - **Язык:** Русский или Английский
+- **Интерфейс:**
+  - `💰 Сумма сделки` — выбор минимального порога
+  - `📂 Категории` — выбор категорий рынков
+  - `⚖️ Вероятность` — фильтр по вероятности
+  - `▶️ Запустить / ⏸️ Остановить` — переключатель уведомлений
+- **Уведомления:** Присылает сообщение с:
+  - Эмодзи категории (💰, ⚽, 📌) и названием рынка
+  - Типом сделки (Покупка/Продажа) и ценой
+  - Суммой сделки (для серий пишет "Series X fills")
+  - Уровнем "кита" и ссылкой на трейдера
+
+#### 5. Администрирование
+- `/stats` — статистика бота (только для владельца)
+- `/users` — список пользователей
+- `/broadcast <сообщение>` — рассылка всем пользователям
 
 ### Установка
 
@@ -84,10 +123,49 @@ Telegram bot for real-time tracking of large trades ("whales") on [Polymarket](h
 
 ### How It Works
 
-1. **Data fetching:** Polls Polymarket Data API every 3 sec
-2. **Aggregation:** Small fills of large orders are grouped into series (60 sec window)
-3. **Deduplication:** SQLite + LRU cache prevents duplicates on restart
-4. **Notifications:** Personalized alerts via Telegram
+#### 1. Data Fetching (PolymarketService)
+- **Source:** Uses public **Polymarket Data API** (`data-api.polymarket.com`).
+- **Method:** Polls the API every **3 seconds**.
+- **Input filtering:** Only `CASH` type trades from **$10** are requested (to capture small parts of large orders).
+
+#### 2. Processing and Aggregation
+A single large trade on Polymarket is often split into multiple small fills. To avoid spamming notifications, the bot groups them into series.
+- **Grouping:** Trades are combined into a series if they match:
+  - Trader wallet
+  - Market (Condition ID)
+  - Side (BUY/SELL)
+  - Outcome (YES/NO/Outcome Index)
+- **Time window:** Trades are collected within **60 seconds** from the first fill.
+- **Trigger threshold:** If the series sum exceeds **$500**, it's considered significant.
+
+#### 3. Deduplication and Persistence
+To avoid duplicate notifications (e.g., on restart):
+- **Database:** Local **SQLite** database (`data/trades.db`) stores unique keys of all processed trades.
+- **Cache:** 10,000 most recent trades are kept in memory (LRU Cache) for instant lookup.
+- **Cleanup:** Old records (older than 72 hours) are automatically deleted.
+
+#### 4. Telegram Bot (TelegramService)
+The bot interacts with users and sends notifications.
+- **Personalization:** Each user can configure their filters:
+  - **Minimum amount:** from $500 to $100,000
+  - **Categories:** Crypto, Sports, Other (determined by keywords)
+  - **Probability:** Any, 1%-99%, 5%-95%, 10%-90%
+  - **Language:** Russian or English
+- **Interface:**
+  - `💰 Trade Amount` — select minimum threshold
+  - `📂 Categories` — select market categories
+  - `⚖️ Probability` — probability filter
+  - `▶️ Start / ⏸️ Stop` — notification toggle
+- **Notifications:** Sends message with:
+  - Category emoji (💰, ⚽, 📌) and market name
+  - Trade type (Buy/Sell) and price
+  - Trade amount (for series shows "Series X fills")
+  - Whale level and link to trader
+
+#### 5. Administration
+- `/stats` — bot statistics (owner only)
+- `/users` — user list
+- `/broadcast <message>` — broadcast to all users
 
 ### Installation
 
