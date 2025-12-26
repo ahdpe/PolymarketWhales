@@ -6,24 +6,33 @@ TRANSLATIONS = {
         'welcome': "🐋 *Polymarket Whales*\n\nОтслеживаю крупные сделки на Polymarket в реальном времени.\n\n*Возможности:*\n• Уведомления о сделках от $500 до $100,000+\n• Фильтрация по сумме и категориям\n• Ссылки на профиль трейдера\n\nИспользуй кнопки для настройки.",
         
         # Buttons
-        'btn_filter': "💰 Фильтр",
-        # Buttons
-        'btn_filter': "⚙️ Фильтр и Настройки",
+        'btn_amount': "💰 Сумма сделки",
+        'btn_categories': "📂 Категории",
+        'btn_probability': "⚖️ Вероятность",
         'btn_start': "▶️ Запустить",
         'btn_stop': "⏸️ Остановить",
-        'btn_language': "🌐 EN",
+        'btn_language': "🇬🇧 EN",
         'btn_about': "ℹ️ О боте",
         
         # Status
         'bot_started': "▶️ **Бот запущен!**\nЯ буду присылать уведомления о сделках.",
         'bot_stopped': "⏸️ **Бот остановлен.**\nУведомления приходить не будут, пока ты снова не запустишь бота.",
         
-        # Filter
-        # Filter
-        'filter_menu_title': "⚙️ **Фильтры и Настройки**\n\nВыбери минимальную сумму сделки и категории:",
-        'filter_section_amount': "➖➖➖ СУММА СДЕЛКИ ➖➖➖",
-        'filter_section_category': "➖➖➖ КАТЕГОРИИ ➖➖➖",
-        'filter_set': "✅ Настройки обновлены!\n\n**Порог:** ${min:,}\n**Категории:** {categories}",
+        # Filter - Amount
+        'amount_menu_title': "💰 **Сумма сделки**\n\nВыбери минимальную сумму:",
+        'amount_set': "✅ Минимальная сумма установлена: *${min:,}*",
+        
+        # Filter - Categories  
+        'categories_menu_title': "📂 **Категории**\n\nВыбери какие рынки отслеживать:",
+        'categories_set': "✅ Категории обновлены: {categories}",
+        
+        # Filter - Probability
+        'probability_menu_title': "⚖️ **Вероятность**\n\nФильтр по вероятности рынка:\n(исключает почти решённые рынки)",
+        'probability_set': "✅ Фильтр вероятности: *{range}*",
+        'prob_any': "🌐 Любая",
+        'prob_1_99': "🟢 1% — 99%",
+        'prob_5_95': "🟡 5% — 95%",
+        'prob_10_90': "🟠 10% — 90%",
         'filter_toast': "Настройки обновлены!",
         
         # Settings
@@ -48,6 +57,7 @@ TRANSLATIONS = {
 • Уведомления о сделках от $500 до $100,000+
 • Фильтр минимальной суммы (настраивается пользователем)
 • Выбор категорий (Крипто, Спорт, Остальное)
+• Фильтр вероятности (исключает почти решённые рынки)
 
 *Классификация объемов:*
 🔥 МЕГА КИТ — >$100,000
@@ -65,6 +75,7 @@ TRANSLATIONS = {
 Если в названии есть: nfl, nba, football, soccer, ufc, f1, lakers, goal и др.
 
 💬 Обратная связь: @Andrey\_Os
+💻 [GitHub](https://github.com/ahdpe/PolymarketWhales)
 
 ⚡ *ТОП Биржа для торговли:*
 [Регистрируйся на Bybit и получи бонусы! 🎁](https://www.bybit.com/invite?ref=JDRKDN)""",
@@ -78,22 +89,33 @@ TRANSLATIONS = {
         'welcome': "🐋 *Polymarket Whales*\n\nReal-time monitoring of large trades on Polymarket.\n\n*Features:*\n• Trade alerts from $500 to $100,000+\n• Amount and category filters\n• Trader profile links\n\nUse buttons below to configure.",
         
         # Buttons
-        'btn_filter': "⚙️ Filter & Settings",
+        'btn_amount': "💰 Trade Amount",
+        'btn_categories': "📂 Categories",
+        'btn_probability': "⚖️ Probability",
         'btn_start': "▶️ Start",
         'btn_stop': "⏸️ Stop",
-        'btn_language': "🌐 RU",
+        'btn_language': "🇷🇺 RU",
         'btn_about': "ℹ️ About",
         
         # Status
         'bot_started': "▶️ **Bot started!**\nI will send trade alerts.",
         'bot_stopped': "⏸️ **Bot stopped.**\nAlerts are paused until you restart the bot.",
         
-        # Filter
-        'filter_menu_title': "⚙️ **Filters & Settings**\n\nSelect minimum trade amount and categories:",
-        'filter_section_amount': "➖➖➖ TRADE AMOUNT ➖➖➖",
-        'filter_section_category': "➖➖➖ CATEGORIES ➖➖➖",
-        'filter_set': "✅ Settings updated!\n\n**Threshold:** ${min:,}\n**Categories:** {categories}",
-        'filter_toast': "Settings updated!",
+        # Filter - Amount
+        'amount_menu_title': "💰 **Trade Amount**\n\nSelect minimum amount:",
+        'amount_set': "✅ Minimum amount set: *${min:,}*",
+        
+        # Filter - Categories  
+        'categories_menu_title': "📂 **Categories**\n\nSelect which markets to track:",
+        'categories_set': "✅ Categories updated: {categories}",
+        
+        # Filter - Probability
+        'probability_menu_title': "⚖️ **Probability**\n\nFilter by market probability:\n(excludes near-resolved markets)",
+        'probability_set': "✅ Probability filter: *{range}*",
+        'prob_any': "🌐 Any",
+        'prob_1_99': "🟢 1% — 99%",
+        'prob_5_95': "🟡 5% — 95%",
+        'prob_10_90': "🟠 10% — 90%",
         
         # Settings
         'settings_title': "⚙️ **Category Settings**\n\nSelect which markets to track:",
@@ -117,6 +139,7 @@ Real-time monitoring of large trades on [Polymarket](https://polymarket.com).
 • Trade alerts from $500 to $100,000+
 • Customizable amount threshold
 • Category selection (Crypto, Sports, Other)
+• Probability filter (excludes near-resolved markets)
 
 *Volume classification:*
 🔥 MEGA WHALE — >$100,000
@@ -134,6 +157,7 @@ Keywords: bitcoin, btc, ethereum, eth, solana, doge, pepe, binance, nft, airdrop
 Keywords: nfl, nba, football, soccer, ufc, f1, lakers, goal, etc.
 
 💬 Feedback: @Andrey\_Os
+💻 [GitHub](https://github.com/ahdpe/PolymarketWhales)
 
 ⚡ *Best Exchange to Trade:*
 [Join Bybit and get massive bonuses! 🎁](https://www.bybit.com/invite?ref=JDRKDN)""",

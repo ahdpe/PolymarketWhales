@@ -24,13 +24,13 @@ WS_URL = "wss://ws-gamma-clob.polymarket.com/" # Gamma is usually testnet, CLOB 
 PROD_WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 
 FILTERS = [
-    {"min": 100000, "emoji": "🔥 МЕГА КИТ", "name": "Мега Кит"},
-    {"min": 50000, "emoji": "⚡ СУПЕР КИТ", "name": "Супер Кит"},
-    {"min": 25000, "emoji": "🐋 КИТ", "name": "Кит"},
-    {"min": 10000, "emoji": "🦈 АКУЛА", "name": "Акула"},
-    {"min": 5000, "emoji": "🐬 ДЕЛЬФИН", "name": "Дельфин"},
-    {"min": 2000, "emoji": "🐟 РЫБА", "name": "Рыба"},
-    {"min": 500, "emoji": "🦐 КРЕВЕТКА", "name": "Креветка"},
+    {"min": 100000, "emoji": "🔥 МЕГА КИТ", "emoji_en": "🔥 MEGA WHALE", "name": "Мега Кит"},
+    {"min": 50000, "emoji": "⚡ СУПЕР КИТ", "emoji_en": "⚡ SUPER WHALE", "name": "Супер Кит"},
+    {"min": 25000, "emoji": "🐋 КИТ", "emoji_en": "🐋 WHALE", "name": "Кит"},
+    {"min": 10000, "emoji": "🦈 АКУЛА", "emoji_en": "🦈 SHARK", "name": "Акула"},
+    {"min": 5000, "emoji": "🐬 ДЕЛЬФИН", "emoji_en": "🐬 DOLPHIN", "name": "Дельфин"},
+    {"min": 2000, "emoji": "🐟 РЫБА", "emoji_en": "🐟 FISH", "name": "Рыба"},
+    {"min": 500, "emoji": "🦐 КРЕВЕТКА", "emoji_en": "🦐 SHRIMP", "name": "Креветка"},
 ]
 
 # Bot owner ID (for admin commands)

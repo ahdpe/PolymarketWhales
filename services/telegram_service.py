@@ -30,10 +30,11 @@ def load_settings():
                 languages = {int(k): v for k, v in data.get('languages', {}).items()}
                 statuses = {int(k): v for k, v in data.get('statuses', {}).items()}
                 usernames = {int(k): v for k, v in data.get('usernames', {}).items()}
-                return filters, categories, languages, statuses, usernames
+                probabilities = {int(k): v for k, v in data.get('probabilities', {}).items()}
+                return filters, categories, languages, statuses, usernames, probabilities
     except Exception as e:
         logger.error(f"Error loading settings: {e}")
-    return {}, {}, {}, {}, {}
+    return {}, {}, {}, {}, {}, {}
 
 def save_settings():
     """Save user settings to file."""
@@ -43,7 +44,8 @@ def save_settings():
             'categories': {str(k): v for k, v in user_categories.items()},
             'languages': {str(k): v for k, v in user_languages.items()},
             'statuses': {str(k): v for k, v in user_statuses.items()},
-            'usernames': {str(k): v for k, v in user_usernames.items()}
+            'usernames': {str(k): v for k, v in user_usernames.items()},
+            'probabilities': {str(k): v for k, v in user_probabilities.items()}
         }
         with open(SETTINGS_FILE, 'w') as f:
             json.dump(data, f)
@@ -51,11 +53,40 @@ def save_settings():
         logger.error(f"Error saving settings: {e}")
 
 # Load settings on startup
-user_filters, user_categories, user_languages, user_statuses, user_usernames = load_settings()
+user_filters, user_categories, user_languages, user_statuses, user_usernames, user_probabilities = load_settings()
+
+# Probability filter options: (min, max) or None for any
+PROBABILITY_OPTIONS = {
+    'any': None,
+    '1_99': (0.01, 0.99),
+    '5_95': (0.05, 0.95),
+    '10_90': (0.10, 0.90),
+}
 
 def get_default_categories():
     """Default category preferences - all enabled."""
     return {'all': True, 'other': True, 'crypto': True, 'sports': True}
+
+def ensure_user_exists(chat_id):
+    """Ensure user has all necessary settings initialized."""
+    chat_id = int(chat_id) # Strict type coercion
+    
+    if chat_id not in user_filters:
+        logger.info(f"Initialized filters for new/reset user {chat_id}")
+        user_filters[chat_id] = 50000  # Default to $50k
+    
+    if chat_id not in user_categories:
+        logger.info(f"Initialized categories for new/reset user {chat_id}")
+        user_categories[chat_id] = get_default_categories()
+        
+    if chat_id not in user_languages:
+        user_languages[chat_id] = 'ru'
+        
+    if chat_id not in user_statuses:
+        user_statuses[chat_id] = True
+    
+    if chat_id not in user_probabilities:
+        user_probabilities[chat_id] = 'any'  # Default: no probability filter
 
 def get_user_lang(chat_id):
     """Get user's language preference."""
@@ -75,71 +106,87 @@ def get_main_keyboard(chat_id):
     
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text=get_text(lang, 'btn_filter')),
-             KeyboardButton(text=btn_toggle)],
-            [KeyboardButton(text=get_text(lang, 'btn_language')),
+            [KeyboardButton(text=get_text(lang, 'btn_amount')),
+             KeyboardButton(text=get_text(lang, 'btn_categories')),
+             KeyboardButton(text=get_text(lang, 'btn_probability'))],
+            [KeyboardButton(text=btn_toggle),
+             KeyboardButton(text=get_text(lang, 'btn_language')),
              KeyboardButton(text=get_text(lang, 'btn_about'))]
         ],
         resize_keyboard=True,
         is_persistent=True
     )
 
-def get_unified_keyboard(chat_id):
-    """Create unified inline keyboard (amounts + categories)."""
+def get_amount_keyboard(chat_id):
+    """Create inline keyboard for amount filter selection."""
     lang = get_user_lang(chat_id)
-    prefs = user_categories.get(chat_id, get_default_categories())
     current_min = user_filters.get(chat_id, 50000)  # Default $50k
     
     buttons = []
     
-    # 1. Amount Filters
-    # Header
-    buttons.append([InlineKeyboardButton(
-        text=get_text(lang, 'filter_section_amount'),
-        callback_data="ignore"
-    )])
-    
     for f in FILTERS:
-        # Mark selected filter
-        text = f"{f['emoji']} >${f['min']:,}"
+        # Use localized emoji based on language
+        emoji = f.get('emoji_en', f['emoji']) if lang == 'en' else f['emoji']
+        text = f"{emoji} >${f['min']:,}"
         if f['min'] == current_min:
             text = f"✅ {text}"
             
         btn = InlineKeyboardButton(text=text, callback_data=f"filter_{f['min']}")
         buttons.append([btn])
-        
-    # 2. Category Filters
-    # Header
-    buttons.append([InlineKeyboardButton(
-        text=get_text(lang, 'filter_section_category'),
-        callback_data="ignore"
-    )])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_probability_keyboard(chat_id):
+    """Create inline keyboard for probability filter selection."""
+    lang = get_user_lang(chat_id)
+    current = user_probabilities.get(chat_id, 'any')
+    
+    options = [
+        ('any', get_text(lang, 'prob_any')),
+        ('1_99', get_text(lang, 'prob_1_99')),
+        ('5_95', get_text(lang, 'prob_5_95')),
+        ('10_90', get_text(lang, 'prob_10_90')),
+    ]
+    
+    buttons = []
+    for key, label in options:
+        text = f"✅ {label}" if key == current else label
+        buttons.append([InlineKeyboardButton(text=text, callback_data=f"prob_{key}")])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_categories_keyboard(chat_id):
+    """Create inline keyboard for category selection."""
+    lang = get_user_lang(chat_id)
+    prefs = user_categories.get(chat_id, get_default_categories())
     
     def check(key):
         return "✅" if prefs.get(key, True) else "⬜"
     
-    buttons.append([InlineKeyboardButton(
-        text=f"{check('all')} {get_text(lang, 'settings_all')}",
-        callback_data="cat_all"
-    )])
-    buttons.append([InlineKeyboardButton(
-        text=f"{check('other')} {get_text(lang, 'settings_other')}",
-        callback_data="cat_other"
-    )])
-    buttons.append([InlineKeyboardButton(
-        text=f"{check('crypto')} {get_text(lang, 'settings_crypto')}",
-        callback_data="cat_crypto"
-    )])
-    buttons.append([InlineKeyboardButton(
-        text=f"{check('sports')} {get_text(lang, 'settings_sports')}",
-        callback_data="cat_sports"
-    )])
-    
-    # Done button
-    buttons.append([InlineKeyboardButton(
-        text=get_text(lang, 'settings_done'),
-        callback_data="cat_done"
-    )])
+    buttons = [
+        [InlineKeyboardButton(
+            text=f"{check('all')} {get_text(lang, 'settings_all')}",
+            callback_data="cat_all"
+        )],
+        [InlineKeyboardButton(
+            text=f"{check('other')} {get_text(lang, 'settings_other')}",
+            callback_data="cat_other"
+        )],
+        [InlineKeyboardButton(
+            text=f"{check('crypto')} {get_text(lang, 'settings_crypto')}",
+            callback_data="cat_crypto"
+        )],
+        [InlineKeyboardButton(
+            text=f"{check('sports')} {get_text(lang, 'settings_sports')}",
+            callback_data="cat_sports"
+        )],
+        [InlineKeyboardButton(
+            text=get_text(lang, 'settings_done'),
+            callback_data="cat_done"
+        )]
+    ]
     
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -147,18 +194,11 @@ def get_unified_keyboard(chat_id):
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     chat_id = message.chat.id
-    # Set defaults
-    if chat_id not in user_filters:
-        user_filters[chat_id] = 50000  # Default to $50k
-    if chat_id not in user_categories:
-        user_categories[chat_id] = get_default_categories()
-    if chat_id not in user_languages:
-        user_languages[chat_id] = 'ru'
-    
     # Save username/name
     username = message.from_user.username or message.from_user.first_name or str(chat_id)
     user_usernames[chat_id] = username
     
+    ensure_user_exists(chat_id)
     # Force active on start command
     user_statuses[chat_id] = True
     save_settings()
@@ -171,25 +211,60 @@ async def cmd_start(message: types.Message):
     )
     logger.info(f"User started bot. Chat ID: {chat_id}")
 
-@dp.message(Command("filter"))
-async def cmd_filter(message: types.Message):
-    """Show unified filter/settings menu."""
+@dp.message(Command("amount"))
+async def cmd_amount(message: types.Message):
+    """Show amount filter menu."""
     chat_id = message.chat.id
+    ensure_user_exists(chat_id)
     lang = get_user_lang(chat_id)
-    if chat_id not in user_categories:
-        user_categories[chat_id] = get_default_categories()
         
     await message.answer(
-        get_text(lang, 'filter_menu_title'),
+        get_text(lang, 'amount_menu_title'),
         parse_mode="Markdown",
-        reply_markup=get_unified_keyboard(chat_id)
+        reply_markup=get_amount_keyboard(chat_id)
+    )
+
+@dp.message(Command("categories"))
+async def cmd_categories(message: types.Message):
+    """Show categories menu."""
+    chat_id = message.chat.id
+    ensure_user_exists(chat_id)
+    lang = get_user_lang(chat_id)
+        
+    await message.answer(
+        get_text(lang, 'categories_menu_title'),
+        parse_mode="Markdown",
+        reply_markup=get_categories_keyboard(chat_id)
+    )
+
+@dp.message(Command("probability"))
+async def cmd_probability(message: types.Message):
+    """Show probability filter menu."""
+    chat_id = message.chat.id
+    ensure_user_exists(chat_id)
+    lang = get_user_lang(chat_id)
+        
+    await message.answer(
+        get_text(lang, 'probability_menu_title'),
+        parse_mode="Markdown",
+        reply_markup=get_probability_keyboard(chat_id)
     )
 
 # Text handlers for bottom keyboard buttons
-@dp.message(F.text.in_(["⚙️ Фильтр и Настройки", "⚙️ Filter & Settings"]))
-async def btn_filter(message: types.Message):
-    """Handle Filter button press."""
-    await cmd_filter(message)
+@dp.message(F.text.in_(["💰 Сумма сделки", "💰 Trade Amount"]))
+async def btn_amount(message: types.Message):
+    """Handle Amount button press."""
+    await cmd_amount(message)
+
+@dp.message(F.text.in_(["📂 Категории", "📂 Categories"]))
+async def btn_categories(message: types.Message):
+    """Handle Categories button press."""
+    await cmd_categories(message)
+
+@dp.message(F.text.in_(["⚖️ Вероятность", "⚖️ Probability"]))
+async def btn_probability(message: types.Message):
+    """Handle Probability button press."""
+    await cmd_probability(message)
 
 @dp.message(F.text.in_(["▶️ Запустить", "▶️ Start", "⏸️ Остановить", "⏸️ Stop"]))
 async def btn_start_stop(message: types.Message):
@@ -211,7 +286,7 @@ async def btn_start_stop(message: types.Message):
         reply_markup=get_main_keyboard(chat_id)
     )
 
-@dp.message(F.text.in_(["🌐 EN", "🌐 RU"]))
+@dp.message(F.text.in_(["🇬🇧 EN", "🇷🇺 RU"]))
 async def btn_language(message: types.Message):
     """Handle Language toggle button."""
     chat_id = message.chat.id
@@ -243,25 +318,49 @@ async def btn_about(message: types.Message):
 async def callback_filter(callback: CallbackQuery):
     """Handle filter amount selection."""
     chat_id = callback.message.chat.id
+    ensure_user_exists(chat_id)
+    lang = get_user_lang(chat_id)
     min_value = int(callback.data.replace("filter_", ""))
     
     user_filters[chat_id] = min_value
     save_settings()
     
-    # Refresh keyboard to show checkmark on new selection
-    await callback.answer()
-    await callback.message.edit_reply_markup(reply_markup=get_unified_keyboard(chat_id))
+    # Show confirmation and refresh keyboard
+    await callback.answer(get_text(lang, 'filter_toast'))
+    await callback.message.edit_text(
+        get_text(lang, 'amount_set', min=min_value),
+        parse_mode="Markdown"
+    )
     logger.info(f"User {chat_id} set filter to ${min_value}")
+
+@dp.callback_query(F.data.startswith("prob_"))
+async def callback_probability(callback: CallbackQuery):
+    """Handle probability filter selection."""
+    chat_id = callback.message.chat.id
+    ensure_user_exists(chat_id)
+    lang = get_user_lang(chat_id)
+    prob_key = callback.data.replace("prob_", "")
+    
+    user_probabilities[chat_id] = prob_key
+    save_settings()
+    
+    # Get display text for the selected range
+    range_text = get_text(lang, f'prob_{prob_key}')
+    
+    await callback.answer(get_text(lang, 'filter_toast'))
+    await callback.message.edit_text(
+        get_text(lang, 'probability_set', range=range_text),
+        parse_mode="Markdown"
+    )
+    logger.info(f"User {chat_id} set probability filter to {prob_key}")
 
 @dp.callback_query(F.data.startswith("cat_"))
 async def callback_category(callback: CallbackQuery):
     """Handle category toggle callback."""
-    chat_id = callback.message.chat.id
+    chat_id = int(callback.message.chat.id)
+    ensure_user_exists(chat_id)
     lang = get_user_lang(chat_id)
     category = callback.data.replace("cat_", "")
-    
-    if chat_id not in user_categories:
-        user_categories[chat_id] = get_default_categories()
     
     prefs = user_categories[chat_id]
     
@@ -278,12 +377,9 @@ async def callback_category(callback: CallbackQuery):
         }
         enabled_text = ", ".join(labels.get(k, k) for k in enabled) if enabled else get_text(lang, 'cat_nothing')
         
-        # Get active filter text
-        min_val = user_filters.get(chat_id, 50000)
-        
         await callback.answer(get_text(lang, 'filter_toast'))
         await callback.message.edit_text(
-            get_text(lang, 'filter_set', min=min_val, categories=enabled_text),
+            get_text(lang, 'categories_set', categories=enabled_text),
             parse_mode="Markdown"
         )
         return
@@ -302,13 +398,15 @@ async def callback_category(callback: CallbackQuery):
     
     user_categories[chat_id] = prefs
     
-    # Don't save on every click to avoid disk IO, save only on 'done' or use logic to save periodically?
-    # For now saving on every click to be safe against crashes, or rely on 'done'
-    # Let's save on 'done' mostly, but maybe better to save here too just in case
-    # Actually saving here ensures consistent state if they just close chat
+    # Save settings on EVERY click to avoid state loss/desync
+    save_settings()
     
     await callback.answer()
-    await callback.message.edit_reply_markup(reply_markup=get_unified_keyboard(chat_id))
+    try:
+        await callback.message.edit_reply_markup(reply_markup=get_categories_keyboard(chat_id))
+    except Exception as e:
+        # Avoid error if keyboard is identical
+        pass
 
 def get_user_min_threshold(chat_id):
     """Get user's minimum threshold. Return default if not set."""
@@ -317,6 +415,11 @@ def get_user_min_threshold(chat_id):
 def get_user_categories(chat_id):
     """Get user's category preferences."""
     return user_categories.get(chat_id, get_default_categories())
+
+def get_user_probability_filter(chat_id):
+    """Get user's probability filter setting. Returns (min, max) tuple or None."""
+    prob_key = user_probabilities.get(chat_id, 'any')
+    return PROBABILITY_OPTIONS.get(prob_key, None)
 
 def is_user_active(chat_id):
     """Check if user is active."""
@@ -397,6 +500,34 @@ async def cmd_users(message: types.Message):
         msg += f"\n... и ещё {len(user_filters) - 50} пользователей"
     
     await message.answer(msg, parse_mode="Markdown")
+
+
+@dp.message(Command("broadcast"))
+async def cmd_broadcast(message: types.Message):
+    """Broadcast message to all users (owner only)."""
+    if message.chat.id != OWNER_ID:
+        return  # Silently ignore non-owners
+    
+    # Get message text after /broadcast command
+    text = message.text.replace("/broadcast", "", 1).strip()
+    
+    if not text:
+        await message.answer("❌ Использование: `/broadcast <сообщение>`", parse_mode="Markdown")
+        return
+    
+    # Send to all users
+    sent = 0
+    failed = 0
+    
+    for chat_id in user_filters.keys():
+        try:
+            await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+            sent += 1
+        except Exception as e:
+            logger.warning(f"Failed to send broadcast to {chat_id}: {e}")
+            failed += 1
+    
+    await message.answer(f"📢 Рассылка завершена!\n✅ Отправлено: {sent}\n❌ Ошибок: {failed}")
 
 
 async def start_telegram():

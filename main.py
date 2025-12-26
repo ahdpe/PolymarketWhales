@@ -1,10 +1,13 @@
 import asyncio
 import logging
 import os
+import sys
+import fcntl
 from services.polymarket import PolymarketService
 from services.telegram_service import (
     start_telegram, send_trade_alert, user_filters, 
-    get_user_categories, get_default_categories, get_user_lang
+    get_user_categories, get_default_categories, get_user_lang,
+    get_user_probability_filter
 )
 from core.filters import get_alert_level
 from core.categories import detect_category, should_show_trade
@@ -78,6 +81,13 @@ async def handle_trade(trade_data):
                 if not should_show_trade(category, user_prefs):
                     continue
                 
+                # Check probability filter
+                prob_range = get_user_probability_filter(chat_id)
+                if prob_range:
+                    min_prob, max_prob = prob_range
+                    if price < min_prob or price > max_prob:
+                        continue  # Price outside user's probability range
+                
                 # Get user's language
                 lang = get_user_lang(chat_id)
                 level_name = get_trade_level_name(lang, alert_config['min'])
@@ -123,41 +133,65 @@ async def handle_trade(trade_data):
                 if value_usd >= min_threshold:
                     # Check category filter for default user
                     user_prefs = get_user_categories(default_id)
-                    if should_show_trade(category, user_prefs):
-                        lang = get_user_lang(default_id)
-                        level_name = get_trade_level_name(lang, alert_config['min'])
-                        level_emoji = get_trade_level_emoji(lang, alert_config['min'])
-                        
-                        trader_text = f"[{trader}]({trader_url})" if trader_url else trader
-                        
-                        # Money display: BUY shows spent → payout, SELL shows just received amount
-                        if side == 'BUY':
-                            money_text = f"*${value_usd:,.0f}* → ${size:,.0f}"
-                        else:
-                            money_text = f"*${value_usd:,.0f}*"
-                        
-                        # Format header based on whether it's a multi-fill series or single trade
-                        is_series = trade_data.get('is_aggregate', False) and trade_data.get('series_fills', 1) > 1
-                        if is_series:
-                            fills = trade_data.get('series_fills', 0)
-                            side_display = f"⚡ *Series {side} {outcome}* ({fills} fills)"
-                        else:
-                            side_display = f"{side_emoji} *{side} {outcome}*"
-                        
-                        msg = (
-                            f"{cat_emoji} [{market_title[:80]}]({market_url})\n"
-                            f"{side_display} @ {price_pct:.1f}%\n"
-                            f"💵 {money_text}\n"
-                            f"{level_emoji} {trader_text}"
-                        )
-                        await send_trade_alert(DEFAULT_CHAT_ID, msg)
+                    if not should_show_trade(category, user_prefs):
+                        return
+                    
+                    # Check probability filter for default user
+                    prob_range = get_user_probability_filter(default_id)
+                    if prob_range:
+                        min_prob, max_prob = prob_range
+                        if price < min_prob or price > max_prob:
+                            return  # Price outside probability range
+                    
+                    lang = get_user_lang(default_id)
+                    level_name = get_trade_level_name(lang, alert_config['min'])
+                    level_emoji = get_trade_level_emoji(lang, alert_config['min'])
+                    
+                    trader_text = f"[{trader}]({trader_url})" if trader_url else trader
+                    
+                    # Money display: BUY shows spent → payout, SELL shows just received amount
+                    if side == 'BUY':
+                        money_text = f"*${value_usd:,.0f}* → ${size:,.0f}"
+                    else:
+                        money_text = f"*${value_usd:,.0f}*"
+                    
+                    # Format header based on whether it's a multi-fill series or single trade
+                    is_series = trade_data.get('is_aggregate', False) and trade_data.get('series_fills', 1) > 1
+                    if is_series:
+                        fills = trade_data.get('series_fills', 0)
+                        side_display = f"⚡ *Series {side} {outcome}* ({fills} fills)"
+                    else:
+                        side_display = f"{side_emoji} *{side} {outcome}*"
+                    
+                    msg = (
+                        f"{cat_emoji} [{market_title[:80]}]({market_url})\n"
+                        f"{side_display} @ {price_pct:.1f}%\n"
+                        f"💵 {money_text}\n"
+                        f"{level_emoji} {trader_text}"
+                    )
+                    await send_trade_alert(DEFAULT_CHAT_ID, msg)
             except ValueError:
                 pass
                     
     except Exception as e:
         logger.error(f"Error handling trade: {e}")
 
+def single_instance_check():
+    """Ensure only one instance of the bot is running."""
+    lock_file = '/tmp/polymarket_whales.lock'
+    try:
+        fp = open(lock_file, 'w')
+        # Try to acquire an exclusive lock without blocking
+        fcntl.lockf(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return fp
+    except IOError:
+        print("Another instance is already running. Exiting.")
+        sys.exit(1)
+
 async def main():
+    # Ensure single instance
+    lock_handle = single_instance_check()
+
     # Start Telegram in background
     tg_task = asyncio.create_task(start_telegram())
     
