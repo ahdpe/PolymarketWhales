@@ -23,15 +23,19 @@ class PolymarketService:
         
         logger.info("PolymarketService initialized - using Data API")
         
-    async def _fetch_recent_trades(self, limit=1000):
+    async def _fetch_recent_trades(self, limit=10000, min_size=500):
         """Fetch recent trades from Data API (no auth required).
         
         Args:
             limit: Maximum number of trades to fetch
+            min_size: Minimum trade size in USD to filter by
         """
         try:
-            # Note: size_gte parameter doesn't work reliably, so we fetch all and filter locally
-            url = f"{DATA_API_URL}/trades?limit={limit}"
+            # Optimized API request with server-side filtering
+            # limit: Max records (increased to 10000 to broaden window)
+            # filterType=CASH & filterAmount: Only fetch trades > $val
+            # takerOnly=true: Focus on market moves
+            url = f"{DATA_API_URL}/trades?limit={limit}&takerOnly=true&filterType=CASH&filterAmount={min_size}"
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
@@ -65,7 +69,7 @@ class PolymarketService:
         
         while True:
             try:
-                trades = await self._fetch_recent_trades(limit=1000)
+                trades = await self._fetch_recent_trades(limit=10000)
                 
                 if trades:
                     new_count = 0
