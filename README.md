@@ -70,11 +70,6 @@ Telegram-бот для отслеживания крупных сделок ("к
   - Суммой сделки (для серий пишет "Series X fills")
   - Уровнем "кита" и ссылкой на трейдера
 
-#### 5. Администрирование
-- `/stats` — статистика бота (только для владельца)
-- `/users` — список пользователей
-- `/broadcast <сообщение>` — рассылка всем пользователям
-
 ### Установка
 
 ```bash
@@ -161,11 +156,6 @@ The bot interacts with users and sends notifications.
   - Trade type (Buy/Sell) and price
   - Trade amount (for series shows "Series X fills")
   - Whale level and link to trader
-
-#### 5. Administration
-- `/stats` — bot statistics (owner only)
-- `/users` — user list
-- `/broadcast <message>` — broadcast to all users
 
 ### Installation
 
